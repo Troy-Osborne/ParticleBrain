@@ -1,8 +1,7 @@
 import math
 from random import random
 from copy import deepcopy
-from math import cos, sin,pi
-tau=pi*2
+
 #Connections have 1 variable changed by the swarm
 #And 4 uint8s and a float-double for export
 #Nodes have 1 variable changed by the swarm
@@ -14,7 +13,7 @@ class functionlist(object):
 ActivationFunctions=functionlist()
 
 
-def DrawScores(Scores,best,Resolution=(1020,1020)):
+def DrawScores(Scores,globalbest,Resolution=(1020,1020)):
     from PIL import Image,ImageDraw
     n=0
     length=len(Scores)
@@ -26,7 +25,7 @@ def DrawScores(Scores,best,Resolution=(1020,1020)):
             dr.rectangle((n/length*Resolution[0],best,(n+1)/length*Resolution[0],curr+10),(255,0,0))
         n+=1
     ######DRAW LINE
-    dr.line((0,best,Resolution[0],best),width=2,fill=(255,255,255))
+    dr.rectangle((0,globalbest-4,Resolution[0],globalbest),(255,255,255))
     return im
     
 
@@ -225,7 +224,7 @@ class BrainLobe:
                 ##add each difference to the end score
         return Score #return the score, lower is better (like golf)
         
-    def Learn(self,TrainingData,Steps=10,particles=800,MaxEntries=200,LearningRate=1,RateDecay=.9,DrawingMode=False):
+    def Learn(self,TrainingData,Steps=100,particles=200,MaxEntries=250,LearningRate=1,RateDecay=.97,DrawingMode=False,Drag=0.1):
         #Make Candidate Networks with associated velocities and extrema
         Particles=[[randomiseposition(self.Center(),LearningRate),randomvelocity(LearningRate,self.axes),None] for p in range(particles)]
         Candidates=[BrainLobe(deepcopy(self.layers),biases=None,connections=deepcopy(self.connections)) for p in range(particles)]
@@ -252,6 +251,7 @@ class BrainLobe:
             for n in range(len(Particles)):
                 Particles[n][1]=Accelerate4(Particles[n][1],Particles[n][0],Best,Particles[n][2],LearningRate)
                 for axis in range(self.axes):
+                    Particles[n][1][axis]*=1-Drag
                     Particles[n][0][axis]+=Particles[n][1][axis]
             ##UPDATE CANDIDATES
                 axis=0
@@ -266,17 +266,12 @@ class BrainLobe:
 
                 
             ##TEST CANDIDATES
-                Score=0
-                for datum in TrainingData:
-                    In=datum[0]
-                    Output=Candidates[n].Run(In)
-                    Diff=sum(map(lambda actual,expected:abs(actual-expected),Output,datum[1]))
-                    Score+=Diff
+                Score=Candidates[n].GetScore(TrainingData)
                 #check if score is a global best (Lower scores are better)
-                if DrawingMode:
-                    StepScores[n]=Score
                 if Score<Best[0]:
                     Best=(Score,deepcopy(Particles[n][0]))
+                if DrawingMode:
+                    StepScores[n]=Score
                 #check if score is a local best (Lower scores are better)
                 PersonalBest=Particles[n][2]
                 if PersonalBest==None or PersonalBest[0]>Score:
@@ -289,7 +284,7 @@ class BrainLobe:
                     L=StepScores[n]
                     H=Particles[n][2][0]
                     graph.append((L,H))
-                    DrawScores(graph,Best[0]).save("%04d.png"%i)
+                DrawScores(graph, Best[0]).save("%04d.png"%i)
         ###Overwrite self with Best
         BestPos=Best[1]
         axis=0
@@ -331,3 +326,5 @@ class BrainLobe:
                 node.Output=node.Function(node.Input)## set the nodes output to it's input (which already includes the bias from when it was reset
         outputs=[i.Output for i in self.layers[-1]]
         return outputs
+
+
