@@ -4,9 +4,9 @@ Disclaimer:
 I'm not always the most legible or concise so I'll probably start making a habit of generating AI readmes. 
 I just don't want people to assume my code is AI generated. I will still be including my original Readme at the bottom.
 
-# ChatGPT Breakdown This part of the readme was partially generated with AI, the code was not:
+This part of the readme was partially generated with AI, the code was not:
 
-Feed Forward Artificial Neural Networks with Particle Swarm Optimization
+# Feed Forward Artificial Neural Networks with Particle Swarm Optimization
 
 This project implements feed-forward artificial neural networks (ANNs) optimized with particle swarm optimizers (PSO). 
 The current class, called "BrainLobe," is designed as a modular subset of a full network and can be used alongside other ANNs or BrainLobe classes in a hierarchical or networked architecture.
