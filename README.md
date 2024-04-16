@@ -1,10 +1,12 @@
 # ParticleBrain
 
 Disclaimer: 
-I'm not always the most legible or concise so I'll probably start making a habit of generating AI readmes. 
-I just don't want people to assume my code is AI generated. I will still be including my original Readme at the bottom.
+I'm not always the most legible or concise so I'll probably start making a habit of generating AI readmes.
 
-This part of the readme was partially generated with AI, the code was not:
+I'm just worried that people may assume my code is AI generated because it's definitely not.
+If I ever do use AI generated code as part of a project I will make it very clear. 
+I do plan to start using AI to generate readmes, manuals, and documentation but everything will still be manually altered before upload to ensure it makes sense and includes all the info I want it to
+I will still be including my original Readme at the bottom.
 
 # Feed Forward Artificial Neural Networks with Particle Swarm Optimization
 
