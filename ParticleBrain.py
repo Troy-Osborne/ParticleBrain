@@ -7,6 +7,7 @@ from copy import deepcopy
 #Nodes have 1 variable changed by the swarm
 #And 1 uint8 and a float-double for export
 
+##Custom class which we can create instances of and assign values to
 class functionlist(object):
     def __init__(self):
         pass
@@ -59,13 +60,18 @@ def fastact(x):
 def step(x):
     return 0 if x<.5 else 1
 
-setattr(ActivationFunctions,'step',step)
-ActivationFunctions.fastact=fastact
+
+#MAKE THE ACTIVATION FUNCTIONS ATTRIBUTES OF `ActivationFunctions OUR INSTANCE OF THE CUSTOM CLASS `functionlist
+setattr(ActivationFunctions,'step',step)#assignment can be done like this
+ActivationFunctions.fastact=fastact #
 ActivationFunctions.identity=identity
 ActivationFunctions.sigmoid=sigmoid
 ActivationFunctions.identity=identity
 ActivationFunctions.tanh=tanh
 ActivationFunctions.tanhnormal=tanhnormal
+
+#NOW THEY CAN SIMPLY BE IMPORTED AS:
+##from ParticleBrain import Node,BrainLobe,ActivationFunctions
 
 def RandomConnections(layershape,Weightinterval=(-1,1)):
     #[1,9,10,6,1] is an example shape, 1 input, 9 nodes in the second layer, 10 in the third, 6 in the third, 1 output
@@ -97,7 +103,7 @@ AR=0.05
 
 
 ##Accelerate to the global best and personal best, with attraction proportional to distance
-def Accelerate(velocity,position,globalbest,particlebest,LearningRate):
+def Accelerate1(velocity,position,globalbest,particlebest,LearningRate):
     if particlebest==None:
         return velocity
     if globalbest==None:
@@ -196,6 +202,7 @@ class BrainLobe:
         self.nodecount=sum(self.layershape)
         self.connectioncount=sum([len(i) for i in self.connections])
         self.axes=self.nodecount+self.connectioncount
+        self.globalbest=None
     def RandomCellBiases(self):
         for i in self.layers:
             for j in i:
@@ -224,9 +231,12 @@ class BrainLobe:
                 ##add each difference to the end score
         return Score #return the score, lower is better (like golf)
         
-    def Learn(self,TrainingData,Steps=100,particles=200,MaxEntries=250,LearningRate=1,RateDecay=.97,DrawingMode=False,Drag=0.1):
+    def Learn(self,TrainingData,Steps=100,particles=200,MaxEntries=250,LearningRate=1,RateDecay=.97,DrawingMode=False,Drag=0.1,ParticleTypes=[0,1,2,4],MinVal=-3,MaxVal=3):
         #Make Candidate Networks with associated velocities and extrema
-        Particles=[[randomiseposition(self.Center(),LearningRate),randomvelocity(LearningRate,self.axes),None] for p in range(particles)]
+        RangeSize=MaxVal-MinVal
+        ##I've recently changed it so that there are multiple particle types
+        ####There are different particle types which will be randomly assigned at the beginning.
+        Particles=[[randomiseposition(self.Center(),LearningRate),randomvelocity(LearningRate,self.axes),None,ParticleTypes[int(random()*len(ParticleTypes))]] for p in range(particles)]
         Candidates=[BrainLobe(deepcopy(self.layers),biases=None,connections=deepcopy(self.connections)) for p in range(particles)]
         print("Training for %04d steps"%Steps)
         length=len(TrainingData)
@@ -240,7 +250,8 @@ class BrainLobe:
                 Subset.append(TrainingData[int(random()*length)])
                 n+=1
             TrainingData=Subset
-        Best=(self.GetScore(TrainingData),self.Center())
+        if self.globalbest==None:
+            self.globalbest=(self.GetScore(TrainingData),self.Center())
         for i in range(Steps):
             print("Step Number %03d"%i)
             #Move the particles
@@ -249,7 +260,19 @@ class BrainLobe:
             if DrawingMode:
                 StepScores=[0 for part in range(len(Particles))]
             for n in range(len(Particles)):
-                Particles[n][1]=Accelerate4(Particles[n][1],Particles[n][0],Best,Particles[n][2],LearningRate)
+                #####UPDATE ACCELERTION
+                pMode=Particles[n][3]  #current particle's mode
+                if pMode==0:
+                    if random()<1/4: ###1 in 4 chance of setting random velocity
+                        Particles[n][1]=[(MinVal+random()*RangeSize)*.3 for i in range(self.axes)]
+                    #randomise velocity every so often
+                else:
+                    Particles[n][1]=[Accelerate1,Accelerate2,Accelerate3,Accelerate4][pMode-1](Particles[n][1],Particles[n][0],self.globalbest,Particles[n][2],LearningRate)
+                #Particles[n][1]=Accelerate4(Particles[n][1],Particles[n][0],self.globalbest,Particles[n][2],LearningRate)
+                ###UPDATE POSITION AND APPLY DRAG
+                if pMode==0:
+                    if random()<1/4: ###1 in 10 chance of setting random new position
+                        Particles[n][0]=[(MinVal+random()*RangeSize) for i in range(self.axes)]
                 for axis in range(self.axes):
                     Particles[n][1][axis]*=1-Drag
                     Particles[n][0][axis]+=Particles[n][1][axis]
@@ -268,8 +291,8 @@ class BrainLobe:
             ##TEST CANDIDATES
                 Score=Candidates[n].GetScore(TrainingData)
                 #check if score is a global best (Lower scores are better)
-                if Score<Best[0]:
-                    Best=(Score,deepcopy(Particles[n][0]))
+                if Score<self.globalbest[0]:
+                    self.globalbest=(Score,deepcopy(Particles[n][0]))
                 if DrawingMode:
                     StepScores[n]=Score
                 #check if score is a local best (Lower scores are better)
@@ -284,9 +307,9 @@ class BrainLobe:
                     L=StepScores[n]
                     H=Particles[n][2][0]
                     graph.append((L,H))
-                DrawScores(graph, Best[0]).save("%04d.png"%i)
+                DrawScores(graph, self.globalbest[0]).save("%04d.png"%i)
         ###Overwrite self with Best
-        BestPos=Best[1]
+        BestPos=self.globalbest[1]
         axis=0
         for col in self.layers:
             for currentnode in col:
@@ -297,11 +320,11 @@ class BrainLobe:
                 conn.Weight=BestPos[axis]
                 axis+=1
         print("UPDATED")
-        print("Best Score was %02d"%int(Best[0]))
+        print("Best Score was %02d"%int(self.globalbest[0]))
                 ####Delete All Particles Delete All Candidates
         del Particles
         del Candidates
-        return LearningRate,Best[0]
+        return LearningRate,self.globalbest[0]
                 
     def Run(self,inputs):
         #Run First Layer
